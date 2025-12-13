@@ -18,4 +18,3 @@ Run the example:
 ./example
 ```
 
-License: (choose and add a license)
