@@ -1,0 +1,50 @@
+# Compiled binary
+/src/main
+
+# Build directories
+/build/
+/cmake-build-*/
+
+# Object files and static libs
+*.o
+*.obj
+*.lo
+*.la
+*.al
+*.a
+*.lib
+
+# Shared objects / DLLs
+*.so
+*.dylib
+*.dll
+
+# Executables
+*.exe
+*.out
+
+# CMake
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+install_manifest.txt
+compile_commands.json
+
+# IDEs and editors
+.vscode/*
+!.vscode/launch.json
+!.vscode/tasks.json
+.idea/
+*.swp
+*~
+.DS_Store
+
+# Logs
+*.log
+
+# Coverage
+coverage/
+
+# Misc
+tags
