@@ -22,6 +22,10 @@
 # Executables
 *.exe
 *.out
+/example
+/game_health
+/expiring_secret
+/memory_corruption
 
 # CMake
 CMakeFiles/
@@ -30,6 +34,8 @@ cmake_install.cmake
 Makefile
 install_manifest.txt
 compile_commands.json
+*.cmake
+!CMakeLists.txt
 
 # IDEs and editors
 .vscode/*
@@ -39,12 +45,17 @@ compile_commands.json
 *.swp
 *~
 .DS_Store
+Thumbs.db
 
 # Logs
 *.log
 
 # Coverage
 coverage/
+*.gcno
+*.gcda
+*.gcov
 
 # Misc
 tags
+.cache/

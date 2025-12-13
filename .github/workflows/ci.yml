@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        compiler: [g++, clang++]
+        exclude:
+          - os: macos-latest
+            compiler: g++
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies (Ubuntu)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential
+
+      - name: Build with ${{ matrix.compiler }}
+        run: |
+          ${{ matrix.compiler }} --version
+          ${{ matrix.compiler }} -std=c++20 -Wall -Wextra -Werror \
+            src/main.cpp src/DecayManager.cpp \
+            -Iinclude -pthread -o example
+
+      - name: Run example
+        run: |
+          timeout 30 ./example || true
+
+  code-quality:
+    name: Code Quality
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check formatting
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-format
+          find include src -name '*.h' -o -name '*.cpp' | xargs clang-format --dry-run --Werror || echo "Formatting issues found"
