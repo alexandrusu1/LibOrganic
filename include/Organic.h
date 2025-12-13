@@ -1,55 +1,73 @@
 #pragma once
 #include <chrono>
 #include <iostream>
+#include <memory>
+#include <atomic>
+#include <type_traits>
 #include "IDecayable.h"
 #include "DecayManager.h"
-
+#include "CorruptionStrategy.h"
+#include "DriftStrategy.h"
 
 template <typename T>
-class Organic : public IDecayable {
-private:
+class Organic : public IDecayable, public std::enable_shared_from_this<Organic<T>> {
     T value;
-    std::chrono::steady_clock::time_point lastAccess;
+    std::atomic<long long> lastAccessMs{};
     std::chrono::milliseconds timeToLive;
+    std::unique_ptr<CorruptionStrategy<T>> strategy;
 
-public:
-   
-    Organic(T initialValue, int ttlMs = 3000) 
-        : value(initialValue), timeToLive(ttlMs) {
-        touch(); 
-        DecayManager::getInstance().registerObject(this);
+    Organic(T initialValue, int ttlMs)
+        : value(initialValue)
+        , timeToLive(ttlMs)
+        , strategy(std::make_unique<DriftStrategy<T>>()) {
+        touch();
     }
 
-    ~Organic() {
+public:
+    Organic(const Organic&) = delete;
+    Organic& operator=(const Organic&) = delete;
+    Organic(Organic&&) = default;
+    Organic& operator=(Organic&&) = default;
+
+    static std::shared_ptr<Organic<T>> create(T initialValue, int ttlMs = 3000) {
+        auto ptr = std::shared_ptr<Organic<T>>(new Organic<T>(initialValue, ttlMs));
+        DecayManager::getInstance().registerObject(std::static_pointer_cast<IDecayable>(ptr));
+        return ptr;
+    }
+
+    ~Organic() override {
         DecayManager::getInstance().unregisterObject(this);
     }
 
-    void touch() {
-        lastAccess = std::chrono::steady_clock::now();
+    void setStrategy(std::unique_ptr<CorruptionStrategy<T>> newStrategy) {
+        strategy = std::move(newStrategy);
     }
 
-    
-    T* operator->() {
-        touch();
-        return &value;
+    void touch() noexcept {
+        auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::steady_clock::now().time_since_epoch()).count();
+        lastAccessMs.store(now, std::memory_order_relaxed);
     }
 
-    T& operator*() {
+    T& get() noexcept {
         touch();
         return value;
     }
 
+    const T& peek() const noexcept {
+        return value;
+    }
 
     bool isExpired(std::chrono::steady_clock::time_point now) const override {
-        return std::chrono::duration_cast<std::chrono::milliseconds>(now - lastAccess) > timeToLive;
+        auto nowMs = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
+        auto last = lastAccessMs.load(std::memory_order_relaxed);
+        return (nowMs - last) > timeToLive.count();
     }
 
     void decay() override {
-        if constexpr (std::is_arithmetic<T>::value) {
-            value = value * 0.9; 
-            std::cout << "[Organic] Degradation: " << value << "\n";
-        } else {
-            std::cout << "⚠️ [Organic] Degradation on complex object(not implemented yet).\n";
+        if (strategy) {
+            strategy->corrupt(value);
+            std::cout << "[Organic] Decay applied. Value: " << value << "\n";
         }
     }
 };

@@ -1,46 +1,40 @@
 #include "../include/DecayManager.h"
-#include <chrono>
 
-DecayManager::DecayManager() : running(true) {
-    decayThread = std::thread(&DecayManager::entropyLoop, this);
-}
+DecayManager::DecayManager() : decayThread([this](std::stop_token st){ entropyLoop(st); }) {}
 
-DecayManager::~DecayManager() {
-    running = false;
-    if (decayThread.joinable()) {
-        decayThread.join();
-    }
-}
+DecayManager::~DecayManager() = default;
 
 DecayManager& DecayManager::getInstance() {
     static DecayManager instance;
     return instance;
 }
 
-void DecayManager::registerObject(IDecayable* obj) {
+void DecayManager::registerObject(IDecayablePtr obj) {
     std::lock_guard<std::mutex> lock(mtx);
     managedObjects.push_back(obj);
-
 }
 
-void DecayManager::unregisterObject(IDecayable* obj) {
+void DecayManager::unregisterObject(const IDecayable* rawPtr) {
     std::lock_guard<std::mutex> lock(mtx);
-    auto it = std::remove(managedObjects.begin(), managedObjects.end(), obj);
-    managedObjects.erase(it, managedObjects.end());
-
+    managedObjects.erase(std::remove_if(managedObjects.begin(), managedObjects.end(),
+        [rawPtr](const std::weak_ptr<IDecayable>& w){
+            auto s = w.lock();
+            return !s || s.get() == rawPtr;
+        }), managedObjects.end());
 }
 
-void DecayManager::entropyLoop() {
-    while (running) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(checkIntervalMs));
-        
+void DecayManager::entropyLoop(std::stop_token stopToken) {
+    while (!stopToken.stop_requested()) {
+        std::this_thread::sleep_for(checkInterval);
         auto now = std::chrono::steady_clock::now();
 
         std::lock_guard<std::mutex> lock(mtx);
-        
-        for (auto* obj : managedObjects) {
-            if (obj->isExpired(now)) {
-                obj->decay();
+        for (auto it = managedObjects.begin(); it != managedObjects.end(); ) {
+            if (auto obj = it->lock()) {
+                if (obj->isExpired(now)) obj->decay();
+                ++it;
+            } else {
+                it = managedObjects.erase(it);
             }
         }
     }
