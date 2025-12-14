@@ -202,7 +202,7 @@ Ideas for contribution:
 
 ## 📄 License
 
-[MIT](LICENSE) © 2024 Alexandru Su
+[MIT](LICENSE) © 2025 alexandrusu1
 
 ---
 
