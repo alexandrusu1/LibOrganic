@@ -49,6 +49,8 @@ Traditional variables are **immortal** — they hold their value forever until e
 
 - **🧬 Organic\<T\>** — Smart wrapper with built-in decay timer
 - **⚡ DecayManager** — Lock-free background entropy (std::jthread)
+- **⏸️ Pause/Resume** — Temporarily freeze decay
+- **📞 Callbacks** — Get notified when values change
 - **🎨 Strategy Pattern** — Pluggable corruption algorithms:
 
 | Strategy | Effect | Best For |
@@ -56,6 +58,7 @@ Traditional variables are **immortal** — they hold their value forever until e
 | `DriftStrategy` | Gradually shifts values (±10%) | Numeric drift simulation |
 | `BitFlipStrategy` | Flips random bits | Chaos/corruption testing |
 | `NullifyStrategy` | Resets to zero/default | Hard expiration |
+| `RegenStrategy` | Increases value up to max | Stamina/mana regen |
 
 ---
 
@@ -156,6 +159,10 @@ cmake --build . --parallel
 | `get()` | Access value & reset decay timer |
 | `peek()` | Read value WITHOUT resetting timer |
 | `touch()` | Reset timer without reading value |
+| `isAlive()` | Check if not expired |
+| `pause()` | Freeze decay |
+| `resume()` | Unfreeze decay |
+| `onDecay(callback)` | Called when value changes |
 | `setStrategy(unique_ptr)` | Change corruption algorithm |
 
 ### Built-in Strategies
@@ -164,6 +171,7 @@ cmake --build . --parallel
 #include "DriftStrategy.h"    // gradual numeric drift
 #include "BitFlipStrategy.h"  // random bit corruption  
 #include "NullifyStrategy.h"  // reset to T{}
+#include "RegenStrategy.h"    // increase up to max
 ```
 
 ---
